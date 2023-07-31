@@ -18,6 +18,7 @@ public interface BeanPostProcessor {
 
     /**
      * Invoked before bean.setXyz() called.
+     * 注入依赖时,应该使用的Bean实例:
      */
     default Object postProcessOnSetProperty(Object bean, String beanName) {
         return bean;

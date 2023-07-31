@@ -22,6 +22,7 @@ public class ResourceResolverTest {
      */
     @Test
     public void scanClass() {
+        // 在pkg下扫描
         String pkg = "com.itranswarp.scan";
         // 定义一个扫描器
         ResourceResolver rr = new ResourceResolver(pkg);
@@ -60,6 +61,7 @@ public class ResourceResolverTest {
 
     @Test
     public void scanJar() {
+        // 扫描@PostConstruct这个注解所在包(jar)
         var pkg = PostConstruct.class.getPackageName();
         var rr = new ResourceResolver(pkg);
         List<String> classes = rr.scan(res -> {

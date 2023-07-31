@@ -41,6 +41,7 @@ public class ResourceResolver {
 
     /**
      * scan()方法传入了一个映射函数，我们传入Resource到Class Name的映射，就可以扫描出Class Name
+     * 这样，ResourceResolver只负责扫描并列出所有文件，由客户端决定是找出.class文件，还是找出.properties文件
      * @param mapper
      * @return
      * @param <R>
@@ -60,6 +61,16 @@ public class ResourceResolver {
         }
     }
 
+    /**
+     * 获取到URL列表,然后根据每个的类型(jar/file)进行对应的处理scanFile
+     * @param basePackagePath
+     * @param path
+     * @param collector
+     * @param mapper
+     * @param <R>
+     * @throws IOException
+     * @throws URISyntaxException
+     */
     <R> void scan0(String basePackagePath, String path, List<R> collector, Function<Resource, R> mapper) throws IOException, URISyntaxException {
         // 打印日志
         logger.atDebug().log("scan path: {}", path);
@@ -67,7 +78,7 @@ public class ResourceResolver {
         Enumeration<URL> en = getContextClassLoader().getResources(path);
         while (en.hasMoreElements()) {
             URL url = en.nextElement();
-            URI uri = url.toURI();
+            URI uri = url.toURI(); // 转为绝对路径
             // 处理末尾多余的/或\
             String uriStr = removeTrailingSlash(uriToString(uri));
             String uriBaseStr = uriStr.substring(0, uriStr.length() - basePackagePath.length());
@@ -82,6 +93,10 @@ public class ResourceResolver {
         }
     }
 
+    /**
+     * 获取ClassLoader
+     * @return
+     */
     ClassLoader getContextClassLoader() {
         ClassLoader cl = null;
         // 先从线程中获取ClassLoader
@@ -103,13 +118,24 @@ public class ResourceResolver {
         return FileSystems.newFileSystem(jarUri, Map.of()).getPath(basePackagePath);
     }
 
+    /**
+     * 扫描文件
+     * @param isJar
+     * @param base
+     * @param root
+     * @param collector
+     * @param mapper
+     * @param <R>
+     * @throws IOException
+     */
     <R> void scanFile(boolean isJar, String base, Path root, List<R> collector, Function<Resource, R> mapper) throws IOException {
         String baseDir = removeTrailingSlash(base);
         Files.walk(root).filter(Files::isRegularFile).forEach(file -> {
             Resource res = null;
-            if (isJar) {
+            if (isJar) { // 处理jar
+                // 构建Resource
                 res = new Resource(baseDir, removeLeadingSlash(file.toString()));
-            } else { // 不是jar就将其名字改为
+            } else { // 处理file
                 String path = file.toString();
                 String name = removeLeadingSlash(path.substring(baseDir.length()));
                 res = new Resource("file:" + path, name);
@@ -117,7 +143,7 @@ public class ResourceResolver {
             logger.atDebug().log("found resource: {}", res);
             R r = mapper.apply(res);
             if (r != null) {
-                collector.add(r);
+                collector.add(r); // add扫描到的文件
             }
         });
     }

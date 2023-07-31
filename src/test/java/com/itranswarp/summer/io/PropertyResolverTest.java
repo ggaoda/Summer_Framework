@@ -15,6 +15,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class PropertyResolverTest {
 
+    /**
+     * 测试自定义配置
+     */
     @Test
     public void propertyValue() {
         // Java标准库读取properties文件:
@@ -51,6 +54,9 @@ public class PropertyResolverTest {
         assertEquals(Duration.ofMinutes((2 * 24 + 8) * 60 + 21), pr.getProperty("scheduler.cleanup", Duration.class));
     }
 
+    /**
+     * 测试不存在的属性
+     */
     @Test
     public void requiredProperty() {
         var props = new Properties();
@@ -63,11 +69,14 @@ public class PropertyResolverTest {
         });
     }
 
+    /**
+     * 测试系统环境变量
+     */
     @Test
     @DisabledOnOs(OS.WINDOWS)
     public void propertyHolder() {
-        String home = System.getenv("HOME");
-        System.out.println("env HOME=" + home);
+        String userName = System.getenv("USERNAME");
+        System.out.println("env USERNAME=" + userName);
 
         var props = new Properties();
         props.setProperty("app.title", "Summer Framework");
@@ -83,8 +92,8 @@ public class PropertyResolverTest {
             pr.getProperty("${app.version:x}", int.class);
         });
 
-        assertEquals(home, pr.getProperty("${app.path:${HOME}}"));
-        assertEquals(home, pr.getProperty("${app.path:${app.home:${HOME}}}"));
+        assertEquals(userName, pr.getProperty("${app.path:${USERNAME}}"));
+        assertEquals(userName, pr.getProperty("${app.path:${app.home:${USERNAME}}}"));
         assertEquals("/not-exist", pr.getProperty("${app.path:${app.home:${ENV_NOT_EXIST:/not-exist}}}"));
     }
 

@@ -76,6 +76,11 @@ public class PropertyResolver {
         return this.properties.containsKey(key);
     }
 
+    /**
+     * 处理Property的总方法(其他的都是重载)
+     * @param key
+     * @return
+     */
     @Nullable
     public String getProperty(String key) {
         // 解析${abc.xyz:defaultValue}:
@@ -100,12 +105,20 @@ public class PropertyResolver {
         return value;
     }
 
+    /**
+     * 处理带defaultValue的Property
+     * @param key
+     * @param defaultValue
+     * @return
+     */
     public String getProperty(String key, String defaultValue) {
         String value = getProperty(key);
+        // value为空就继续寻找
         return value == null ? parseValue(defaultValue) : value;
     }
 
     /**
+     * 处理需要convert的Property
      * 除了String类型外，@Value注入时，还允许boolean、int、Long等基本类型和包装类型。
      * 此外，Spring还支持Date、Duration等类型的注入。我们既要实现类型转换，又不能写死，否则，将来支持新的类型时就要改代码。
      * @param key
@@ -124,6 +137,14 @@ public class PropertyResolver {
     }
 
 
+    /**
+     * 处理需要convert的Property
+     * @param key
+     * @param targetType
+     * @param defaultValue
+     * @return
+     * @param <T>
+     */
     public <T> T getProperty(String key, Class<T> targetType, T defaultValue) {
         String value = getProperty(key);
         if (value == null) {
@@ -133,11 +154,23 @@ public class PropertyResolver {
         return convert(targetType, value);
     }
 
+    /**
+     * 直接根据k获取v
+     * @param key
+     * @return
+     */
     public String getRequiredProperty(String key) {
         String value = getProperty(key);
         return Objects.requireNonNull(value, "Property '" + key + "' not found.");
     }
 
+    /**
+     * 根据k和targetType获取v
+     * @param key
+     * @param targetType
+     * @return
+     * @param <T>
+     */
     public <T> T getRequiredProperty(String key, Class<T> targetType) {
         T value = getProperty(key, targetType);
         return Objects.requireNonNull(value, "Property '" + key + "' not found.");
@@ -159,14 +192,19 @@ public class PropertyResolver {
         return (T) fn.apply(value);
     }
 
+    /**
+     * 递归处理嵌套kv
+     * @param value
+     * @return
+     */
     String parseValue(String value) {
         PropertyExpr expr = parsePropertyExpr(value);
-        if (expr == null) {
+        if (expr == null) { // 后面没有嵌套k:v直接返回
             return value;
         }
-        if (expr.defaultValue() != null) {
+        if (expr.defaultValue() != null) { // 还有k:v:defaultValue
             return getProperty(expr.key(), expr.defaultValue());
-        } else {
+        } else { // 还有k:v
             return getRequiredProperty(expr.key());
         }
     }

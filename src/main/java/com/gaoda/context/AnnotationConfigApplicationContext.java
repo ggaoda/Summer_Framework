@@ -28,19 +28,20 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
     private Set<String> creatingBeanNames;
 
     public AnnotationConfigApplicationContext(Class<?> configClass, PropertyResolver propertyResolver) {
-        this.propertyResolver = propertyResolver;
 
-        // 扫描获取所有Bean的Class类型:
+        this.propertyResolver = propertyResolver; // 属性处理
+
+        // 第一步 : 扫描获取所有Bean的Class类型:
         final Set<String> beanClassNames = scanForClassNames(configClass);
 
-        // 创建Bean的定义:
+        // 第二步 : 创建Bean的定义:
         this.beans = createBeanDefinitions(beanClassNames);
 
-        // 创建BeanName检测循环依赖:
+        // 第三步 : 创建BeanName检测循环依赖:
         this.creatingBeanNames = new HashSet<>();
 
 
-        // 创建@Configuration类型的Bean:
+        // 第四步 : 先创建@Configuration类型的Bean:
         this.beans.values().stream()
                 // 过滤出@Configuration:
                 .filter(this::isConfigurationDefinition).sorted().map(def -> {
@@ -51,7 +52,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
 
 
 
-        // 创建BeanPostProcessor类型的Bean:
+        // 第五步 : 创建BeanPostProcessor类型的Bean:
         List<BeanPostProcessor> processors = this.beans.values().stream()
                 // 过滤出BeanPostProcessor:
                 .filter(this::isBeanPostProcessorDefinition)
@@ -66,7 +67,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
 
 
 
-        // 创建其他普通Bean:
+        // 第六步 : 创建其他普通Bean:
         createNormalBeans();
 
 
@@ -246,6 +247,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
      */
     Map<String, BeanDefinition> createBeanDefinitions(Set<String> classNameSet) {
         Map<String, BeanDefinition> defs = new HashMap<>();
+        // 遍历每个Class处理
         for (String className : classNameSet) {
             // 获取Class:
             Class<?> clazz = null;
@@ -261,6 +263,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
             Component component = ClassUtils.findAnnotation(clazz, Component.class);
             if (component != null) {
                 logger.atDebug().log("found component: {}", clazz.getName());
+                // 类的修饰符不能为abstract和private  否则抛出异常
                 int mod = clazz.getModifiers();
                 if (Modifier.isAbstract(mod)) {
                     throw new BeanDefinitionException("@Component class " + clazz.getName() + " must not be abstract.");
@@ -282,6 +285,9 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
                 // 查找是否有@Configuration:
                 Configuration configuration = ClassUtils.findAnnotation(clazz, Configuration.class);
                 if (configuration != null) {
+                    /**
+                     * 带有@Configuration注解的Class，视为Bean的工厂，我们需要继续在scanFactoryMethods()中查找@Bean标注的方法：
+                     */
                     // 查找@Bean方法:
                     scanFactoryMethods(beanName, clazz, defs);
                 }
@@ -318,6 +324,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
     }
 
     /**
+     * 弱依赖注入完成后，再循环一遍所有的BeanDefinition，对其调用init方法，完成最后一步初始化：
      * 调用init方法
      */
     void initBean(BeanDefinition def) {
@@ -340,7 +347,10 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
     }
 
     /**
-     * 注入属性
+     * 使用Setter方法和字段注入时，要注意一点，就是不仅要在当前类查找，还要在父类查找，
+     * 因为有些@Autowired写在父类，所有子类都可使用，这样更方便。
+     *
+     * 在当前类及父类进行字段和方法注入:
      */
     void injectProperties(BeanDefinition def, Class<?> clazz, Object bean) throws ReflectiveOperationException {
         // 在当前类查找Field和Method并注入:
@@ -495,6 +505,9 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
             // 是否带有@Bean标注:
             Bean bean = method.getAnnotation(Bean.class);
             if (bean != null) {
+                /**
+                 * 方法访问修饰不能为abstract    final    private
+                 */
                 int mod = method.getModifiers();
                 if (Modifier.isAbstract(mod)) {
                     throw new BeanDefinitionException("@Bean method " + clazz.getName() + "." + method.getName() + " must not be abstract.");
@@ -505,12 +518,12 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
                 if (Modifier.isPrivate(mod)) {
                     throw new BeanDefinitionException("@Bean method " + clazz.getName() + "." + method.getName() + " must not be private.");
                 }
-                // Bean的声明类型是方法返回类型:
+                // Bean的声明类型应是方法返回类型:
                 Class<?> beanClass = method.getReturnType();
-                if (beanClass.isPrimitive()) {
+                if (beanClass.isPrimitive()) { // 不能为primitive
                     throw new BeanDefinitionException("@Bean method " + clazz.getName() + "." + method.getName() + " must not return primitive type.");
                 }
-                if (beanClass == void.class || beanClass == Void.class) {
+                if (beanClass == void.class || beanClass == Void.class) { // 不能返回void
                     throw new BeanDefinitionException("@Bean method " + clazz.getName() + "." + method.getName() + " must not return void.");
                 }
                 var def = new BeanDefinition(ClassUtils.getBeanName(method), beanClass, factoryBeanName,
@@ -593,6 +606,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
                 // 遇到以.class结尾的文件，就将其转换为Class全名:
                 String name = res.name();
                 if (name.endsWith(".class")) {
+                    // 转为全名
                     return name.substring(0, name.length() - 6).replace("/", ".").replace("\\", ".");
                 }
                 return null;
@@ -615,7 +629,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
                     logger.warn("ignore import: " + importClassName + " for it is already been scanned.");
                 } else {
                     logger.debug("class found by import: {}", importClassName);
-                    classNameSet.add(importClassName);
+                    classNameSet.add(importClassName); // 加入
                 }
             }
         }
@@ -782,7 +796,9 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
     }
 
 
-
+    /**
+     * 处理@PreDestroy方法更简单，在ApplicationContext关闭时遍历所有Bean，调用destroy方法即可。
+     */
     @Override
     public void close() {
         logger.info("Closing {}...", this.getClass().getName());

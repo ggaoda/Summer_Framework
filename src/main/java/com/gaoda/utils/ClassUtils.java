@@ -44,8 +44,9 @@ public class ClassUtils {
         A a = target.getAnnotation(annoClass);
         for (Annotation anno : target.getAnnotations()) {
             Class<? extends Annotation> annoType = anno.annotationType();
+            // 递归查找下去直到找到属于annotation的元注解
             if (!annoType.getPackageName().equals("java.lang.annotation")) {
-                A found = findAnnotation(annoType, annoClass);
+                A found = findAnnotation(annoType, annoClass); // 递归
                 if (found != null) {
                     if (a != null) {
                         throw new BeanDefinitionException("Duplicate @" + annoClass.getSimpleName() + " found on class " + target.getSimpleName());
@@ -101,7 +102,7 @@ public class ClassUtils {
             // @Component exist:
             name = component.value();
         } else {
-            // 未找到@Component，继续在其他注解中查找@Component:
+            // 未找到@Component，继续在该类其他注解中查找@Component:
             for (Annotation anno : clazz.getAnnotations()) {
                 if (findAnnotation(anno.annotationType(), Component.class) != null) {
                     try {
@@ -112,7 +113,7 @@ public class ClassUtils {
                 }
             }
         }
-        if (name.isEmpty()) {
+        if (name.isEmpty()) { // 没有找到标注的name,则用class默认的开头小写名
             // default name: "HelloWorld" => "helloWorld"
             name = clazz.getSimpleName();
             name = Character.toLowerCase(name.charAt(0)) + name.substring(1);
@@ -121,6 +122,9 @@ public class ClassUtils {
     }
 
     /**
+     *
+     * 查找构造方法和销毁方法利用注解@PostConstruct和@PreDestroy
+     *
      * Get non-arg method by @PostConstruct or @PreDestroy. Not search in super
      * class.
      * 

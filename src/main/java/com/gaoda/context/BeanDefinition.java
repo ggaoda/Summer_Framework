@@ -38,6 +38,22 @@ public class BeanDefinition implements Comparable<BeanDefinition> {
     private Method initMethod;
     private Method destroyMethod;
 
+
+    /**
+     * 构造方法一 :
+     * 对于自己定义的带@Component注解的Bean，我们需要获取Class类型，获取构造方法来创建Bean，
+     * 然后收集@PostConstruct和@PreDestroy标注的初始化与销毁的方法，以及其他信息，
+     * 如@Order定义Bean的内部排序顺序，@Primary定义存在多个相同类型时返回哪个“主要”Bean。
+     * @param name
+     * @param beanClass
+     * @param constructor
+     * @param order
+     * @param primary
+     * @param initMethodName
+     * @param destroyMethodName
+     * @param initMethod
+     * @param destroyMethod
+     */
     public BeanDefinition(String name, Class<?> beanClass, Constructor<?> constructor, int order, boolean primary, String initMethodName,
             String destroyMethodName, Method initMethod, Method destroyMethod) {
         this.name = name;
@@ -47,10 +63,27 @@ public class BeanDefinition implements Comparable<BeanDefinition> {
         this.factoryMethod = null;
         this.order = order;
         this.primary = primary;
+        // 允许反射创建
         constructor.setAccessible(true);
         setInitAndDestroyMethod(initMethodName, destroyMethodName, initMethod, destroyMethod);
     }
 
+    /**
+     * 构造方法二
+     * 对于@Configuration定义的@Bean方法，我们把它看作Bean的工厂方法，
+     * 我们需要获取方法返回值作为Class类型，方法本身作为创建Bean的factoryMethod，
+     * 然后收集@Bean定义的initMethod和destroyMethod标识的初始化于销毁的方法名，以及其他@Order、@Primary等信息。
+     * @param name
+     * @param beanClass
+     * @param factoryName
+     * @param factoryMethod
+     * @param order
+     * @param primary
+     * @param initMethodName
+     * @param destroyMethodName
+     * @param initMethod
+     * @param destroyMethod
+     */
     public BeanDefinition(String name, Class<?> beanClass, String factoryName, Method factoryMethod, int order, boolean primary, String initMethodName,
             String destroyMethodName, Method initMethod, Method destroyMethod) {
         this.name = name;
@@ -64,9 +97,20 @@ public class BeanDefinition implements Comparable<BeanDefinition> {
         setInitAndDestroyMethod(initMethodName, destroyMethodName, initMethod, destroyMethod);
     }
 
+
+    /**
+     * set设置初始方法和销毁方法
+     * @param initMethodName
+     * @param destroyMethodName
+     * @param initMethod
+     * @param destroyMethod
+     */
     private void setInitAndDestroyMethod(String initMethodName, String destroyMethodName, Method initMethod, Method destroyMethod) {
         this.initMethodName = initMethodName;
         this.destroyMethodName = destroyMethodName;
+
+        // 允许反射
+
         if (initMethod != null) {
             initMethod.setAccessible(true);
         }
@@ -76,6 +120,8 @@ public class BeanDefinition implements Comparable<BeanDefinition> {
         this.initMethod = initMethod;
         this.destroyMethod = destroyMethod;
     }
+
+    // region get方法
 
     @Nullable
     public Constructor<?> getConstructor() {
@@ -124,7 +170,7 @@ public class BeanDefinition implements Comparable<BeanDefinition> {
     public Object getInstance() {
         return this.instance;
     }
-
+    // 获取必需实例
     public Object getRequiredInstance() {
         if (this.instance == null) {
             throw new BeanCreationException(String.format("Instance of bean with name '%s' and type '%s' is not instantiated during current stage.",
@@ -141,7 +187,7 @@ public class BeanDefinition implements Comparable<BeanDefinition> {
         }
         this.instance = instance;
     }
-
+    // 是否primary
     public boolean isPrimary() {
         return this.primary;
     }
@@ -157,6 +203,10 @@ public class BeanDefinition implements Comparable<BeanDefinition> {
                 + ", primary=" + primary + ", instance=" + instance + "]";
     }
 
+    /**
+     * 获取创建详情
+     * @return
+     */
     String getCreateDetail() {
         if (this.factoryMethod != null) {
             String params = String.join(", ", Arrays.stream(this.factoryMethod.getParameterTypes()).map(t -> t.getSimpleName()).toArray(String[]::new));
