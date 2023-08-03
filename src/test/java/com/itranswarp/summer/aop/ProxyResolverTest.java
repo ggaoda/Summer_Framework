@@ -7,6 +7,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class ProxyResolverTest {
 
+    /**
+     * 刚写ProxyResolver的Test,因为设为私有构造了,所以这里会报错
+     */
 //    @Test
 //    public void testProxyResovler() {
 //        // 原始Bean:

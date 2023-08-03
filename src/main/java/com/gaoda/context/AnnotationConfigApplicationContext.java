@@ -28,6 +28,8 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
     private Set<String> creatingBeanNames;
 
     public AnnotationConfigApplicationContext(Class<?> configClass, PropertyResolver propertyResolver) {
+        // zhaiohioawgiaighawihigh
+        ApplicationContextUtils.setApplicationContext(this);
 
         this.propertyResolver = propertyResolver; // 属性处理
 
