@@ -182,21 +182,43 @@ public class AnnotationConfigApplicationContextTest {
     public void testProxy() {
         var ctx = new AnnotationConfigApplicationContext(ScanApplication.class, createPropertyResolver());
         // test proxy:
+        // 获取OriginBean的实例,此处获取的应该是SendProxyBeanProxy:
         OriginBean proxy = ctx.getBean(OriginBean.class);
         assertSame(SecondProxyBean.class, proxy.getClass());
-
+        // 调用proxy的getName()会最终调用原始Bean的getName(),从而返回正确的值:
         assertEquals("Scan App", proxy.getName());
         assertEquals("v1.0", proxy.getVersion());
-        // make sure proxy.field is not injected:
+        // 但proxy的name和version字段并没有被注入:
         assertNull(proxy.name);
         assertNull(proxy.version);
 
-        // other beans are injected proxy instance:
+        // 获取InjectProxyOnConstructorBean实例:
         var inject1 = ctx.getBean(InjectProxyOnPropertyBean.class);
         var inject2 = ctx.getBean(InjectProxyOnConstructorBean.class);
+        // 注入的OriginBean应该为Proxy，而且和前面返回的proxy是同一实例:
         assertSame(proxy, inject1.injected);
         assertSame(proxy, inject2.injected);
     }
+
+    /**
+     * 从上面的测试代码我们也能看出，对于使用Proxy模式的Bean来说，正常的方法调用对用户是透明的，
+     * 但是，直接访问Bean注入的字段，如果获取的是Proxy，则字段全部为null，因为注入并没有发生在Proxy，而是原始Bean。
+     * 这也是为什么当我们需要访问某个注入的Bean时，总是调用方法而不是直接访问字段：
+     * eg :
+     *  @Component
+     * public class MailService {
+     *     @Autowired
+     *     UserService userService;
+     *
+     *     public String sendMail() {
+     *         // 错误:不要直接访问UserService的字段,因为如果UserService被代理,则返回null:
+     *         ZoneId zoneId = userService.zoneId;
+     *         // 正确:通过方法访问UserService的字段,无论是否被代理,返回值均是正确的:
+     *         ZoneId zoneId = userService.getZoneId();
+     *         ...
+     *     }
+     * }
+     */
 
 
     PropertyResolver createPropertyResolver() {

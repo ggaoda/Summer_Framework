@@ -63,7 +63,7 @@ public class BeanDefinition implements Comparable<BeanDefinition> {
         this.factoryMethod = null;
         this.order = order;
         this.primary = primary;
-        // 允许反射创建
+        // 允许使用反射构造方法创建
         constructor.setAccessible(true);
         setInitAndDestroyMethod(initMethodName, destroyMethodName, initMethod, destroyMethod);
     }
@@ -93,6 +93,7 @@ public class BeanDefinition implements Comparable<BeanDefinition> {
         this.factoryMethod = factoryMethod;
         this.order = order;
         this.primary = primary;
+        // 允许反射
         factoryMethod.setAccessible(true);
         setInitAndDestroyMethod(initMethodName, destroyMethodName, initMethod, destroyMethod);
     }

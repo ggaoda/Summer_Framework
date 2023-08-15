@@ -115,17 +115,24 @@ public class JdbcTemplate {
         });
     }
 
+    /**
+     * 使用JdbcTemplate，如果有事务，自动加入当前事务，否则，按普通SQL执行（数据库隐含事务）。
+     * @param action
+     * @return
+     * @param <T>
+     * @throws DataAccessException
+     */
     public <T> T execute(ConnectionCallback<T> action) throws DataAccessException {
         // 尝试获取当前事务连接:
         Connection current = TransactionalUtils.getCurrentConnection();
-        if (current != null) {
+        if (current != null) { // 有连接就回调返回当前连接
             try {
                 return action.doInConnection(current);
             } catch (SQLException e) {
                 throw new DataAccessException(e);
             }
         }
-        // 获取新连接:
+        // 无事务,从dataSource获取新连接:
         try (Connection newConn = dataSource.getConnection()) {
             final boolean autoCommit = newConn.getAutoCommit();
             if (!autoCommit) {

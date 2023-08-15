@@ -15,6 +15,9 @@ import javax.sql.DataSource;
 @Configuration
 public class JdbcConfiguration {
 
+    /**
+     * 实现一个HikariCP支持的DataSource：
+     */
     @Bean(destroyMethod = "close")
     DataSource dataSource(
             // properties:
@@ -40,16 +43,32 @@ public class JdbcConfiguration {
         return new HikariDataSource(config);
     }
 
+    /**
+     * 由JdbcConfiguration创建的JdbcTemplate，实现基本SQL操作；
+     * @param dataSource
+     * @return
+     */
     @Bean
     JdbcTemplate jdbcTemplate(@Autowired DataSource dataSource) {
         return new JdbcTemplate(dataSource);
     }
 
+    /**
+     * 由JdbcConfiguration创建的TransactionalBeanPostProcessor，
+     * 负责给@Transactional标识的Bean创建AOP代理，拦截器正是PlatformTransactionManager。
+     * @return
+     */
     @Bean
     TransactionalBeanPostProcessor transactionalBeanPostProcessor() {
         return new TransactionalBeanPostProcessor();
     }
 
+    /**
+     * 由JdbcConfiguration创建的PlatformTransactionManager，
+     * 负责拦截@Transactional标识的Bean的public方法，自动管理事务；
+     * @param dataSource
+     * @return
+     */
     @Bean
     PlatformTransactionManager platformTransactionManager(@Autowired DataSource dataSource) {
         return new DataSourceTransactionManager(dataSource);

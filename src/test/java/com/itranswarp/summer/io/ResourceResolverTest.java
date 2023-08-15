@@ -56,8 +56,6 @@ public class ResourceResolverTest {
         }
     }
 
-    // 这样，ResourceResolver只负责扫描并列出所有文件，
-    // 由客户端决定是找出.class文件，还是找出.properties文件。
 
     @Test
     public void scanJar() {

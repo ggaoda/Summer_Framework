@@ -66,6 +66,7 @@ public class YamlUtils {
 
 /**
  * Disable ALL implicit convert and treat all values as string.
+ * 默认将所有的类型转换都转为String处理
  */
 class NoImplicitResolver extends Resolver {
 

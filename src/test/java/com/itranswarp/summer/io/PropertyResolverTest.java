@@ -38,7 +38,7 @@ public class PropertyResolverTest {
         assertEquals("v1.0", pr.getProperty("app.version"));
         assertEquals("v1.0", pr.getProperty("app.version", "unknown"));
         assertNull(pr.getProperty("app.author"));
-        assertEquals("Michael Liao", pr.getProperty("app.author", "Michael Liao"));
+        assertEquals("Gao Da", pr.getProperty("app.author", "Gao Da"));
 
         assertTrue(pr.getProperty("jdbc.auto-commit", boolean.class));
         assertEquals(Boolean.TRUE, pr.getProperty("jdbc.auto-commit", Boolean.class));

@@ -171,6 +171,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
                 throw new BeanCreationException(
                         String.format("Must specify @Autowired or @Value when create bean '%s': %s.", def.getName(), def.getBeanClass().getName()));
             }
+            // 处理参数
             // 参数类型:
             final Class<?> type = param.getType();
             if (value != null) {
@@ -180,9 +181,9 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
                 // 参数是@Autowired:
                 String name = autowired.name();
                 boolean required = autowired.value();
-                // 参数是@Autowired,查找依赖的BeanDefinition:
+                // 参数是@Autowired,查找依赖的BeanDefinition:     name属性为空,直接按type寻找      按name优先寻找,没找到再按type找到
                 BeanDefinition dependsOnDef = name.isEmpty() ? findBeanDefinition(type) : findBeanDefinition(name, type);
-                // 检测required==true?
+                // 检测required==true? 依赖BeanDefinition没找到
                 if (required && dependsOnDef == null) {
                     throw new BeanCreationException(String.format("Missing autowired bean with type '%s' when create bean '%s': %s.", type.getName(),
                             def.getName(), def.getBeanClass().getName()));
@@ -258,6 +259,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
             } catch (ClassNotFoundException e) {
                 throw new BeanCreationException(e);
             }
+            // 跳过注解|枚举|接口|record
             if (clazz.isAnnotation() || clazz.isEnum() || clazz.isInterface() || clazz.isRecord()) {
                 continue;
             }
@@ -313,7 +315,6 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
      * 注入依赖但不调用init方法
      */
     void injectBean(BeanDefinition def) {
-        // final final final
         // 获取Bean实例，或被代理的原始实例:
         final Object beanInstance = getProxiedInstance(def);
 
@@ -397,6 +398,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
         }
         if (acc instanceof Method m) {
             checkFieldOrMethod(m);
+            // setter方法参数个数必须为1
             if (m.getParameters().length != 1) {
                 throw new BeanDefinitionException(
                         String.format("Cannot inject a non-setter method %s for bean '%s': %s", m.getName(), def.getName(), def.getBeanClass().getName()));
@@ -404,10 +406,10 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
             m.setAccessible(true);
             method = m;
         }
-
+        // 获取name和type
         String accessibleName = field != null ? field.getName() : method.getName();
         Class<?> accessibleType = field != null ? field.getType() : method.getParameterTypes()[0];
-
+        // 同时拥有Value和Autowired两个注解报错
         if (value != null && autowired != null) {
             throw new BeanCreationException(String.format("Cannot specify both @Autowired and @Value when inject %s.%s for bean '%s': %s",
                     clazz.getSimpleName(), accessibleName, def.getName(), def.getBeanClass().getName()));
@@ -416,13 +418,13 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
         // @Value注入:
         if (value != null) {
             Object propValue = this.propertyResolver.getRequiredProperty(value.value(), accessibleType);
-            if (field != null) {
+            if (field != null) { // 字段注入
                 logger.atDebug().log("Field injection: {}.{} = {}", def.getBeanClass().getName(), accessibleName, propValue);
-                field.set(bean, propValue);
+                field.set(bean, propValue); // 直接set属性
             }
-            if (method != null) {
+            if (method != null) { // setter注入
                 logger.atDebug().log("Method injection: {}.{} ({})", def.getBeanClass().getName(), accessibleName, propValue);
-                method.invoke(bean, propValue);
+                method.invoke(bean, propValue); // 反射注入
             }
         }
 
@@ -430,34 +432,41 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
         if (autowired != null) {
             String name = autowired.name();
             boolean required = autowired.value();
+            // Bean                            name属性为空则按type注入      否则先按name找不到再按type
             Object depends = name.isEmpty() ? findBean(accessibleType) : findBean(name, accessibleType);
-            if (required && depends == null) {
+            if (required && depends == null) {// required必须 但Bean没找到
                 throw new UnsatisfiedDependencyException(String.format("Dependency bean not found when inject %s.%s for bean '%s': %s", clazz.getSimpleName(),
                         accessibleName, def.getName(), def.getBeanClass().getName()));
             }
             if (depends != null) {
                 if (field != null) {
                     logger.atDebug().log("Field injection: {}.{} = {}", def.getBeanClass().getName(), accessibleName, depends);
-                    field.set(bean, depends);
+                    field.set(bean, depends); // 字段set
                 }
                 if (method != null) {
                     logger.atDebug().log("Mield injection: {}.{} ({})", def.getBeanClass().getName(), accessibleName, depends);
-                    method.invoke(bean, depends);
+                    method.invoke(bean, depends); // setter invoke
                 }
             }
         }
     }
 
+    /**
+     * 检查Field或Method的正确性
+     * @param m
+     */
     void checkFieldOrMethod(Member m) {
         int mod = m.getModifiers();
+        // 静态不能注入
         if (Modifier.isStatic(mod)) {
             throw new BeanDefinitionException("Cannot inject static field: " + m);
         }
+        // final成员不能注入
         if (Modifier.isFinal(mod)) {
             if (m instanceof Field field) {
                 throw new BeanDefinitionException("Cannot inject final field: " + field);
             }
-            if (m instanceof Method method) {
+            if (m instanceof Method method) { // final setter可以注入但会警告
                 logger.warn(
                         "Inject final method should be careful because it is not called on target bean when bean is proxied and may cause NullPointerException.");
             }
@@ -621,7 +630,6 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
             // 扫描结果添加到Set:
             classNameSet.addAll(classList);
         }
-
         // 继续查找@Import(Xyz.class)导入的Class配置:
         Import importConfig = configClass.getAnnotation(Import.class);
         if (importConfig != null) {
@@ -781,6 +789,12 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
         return (T) def.getRequiredInstance();
     }
 
+    /**
+     * 寻找Bean
+     * @param requiredType
+     * @return
+     * @param <T>
+     */
     @Nullable
     @SuppressWarnings("unchecked")
     protected <T> T findBean(Class<T> requiredType) {
@@ -819,6 +833,9 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
         Object beanInstance = def.getInstance();
         // 如果Proxy改变了原始Bean，又希望注入到原始Bean，则由BeanPostProcessor指定原始Bean:
         List<BeanPostProcessor> reversedBeanPostProcessors = new ArrayList<>(this.beanPostProcessors);
+        // 将beanPostProcessors倒序
+        // 解决A->B->C的连续代理问题
+        // 这样就能先还原为B 再还原为A
         Collections.reverse(reversedBeanPostProcessors);
         for (BeanPostProcessor beanPostProcessor : reversedBeanPostProcessors) {
             Object restoredInstance = beanPostProcessor.postProcessOnSetProperty(beanInstance, def.getName());

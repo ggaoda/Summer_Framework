@@ -22,13 +22,14 @@ public class PropertyResolver {
 
 
     public PropertyResolver(Properties props) {
-        // 存入环境变量
+        // 存入系统环境变量
         this.properties.putAll(System.getenv());
         // 存入Properties
         Set<String> names = props.stringPropertyNames();
         for (String name : names) {
             this.properties.put(name, props.getProperty(name));
         }
+        // 打印信息
         if (logger.isDebugEnabled()) {
             List<String> keys = new ArrayList<>(this.properties.keySet());
             Collections.sort(keys);
@@ -189,7 +190,7 @@ public class PropertyResolver {
         if (fn == null) {
             throw new IllegalArgumentException("Unsupported value type: " + clazz.getName());
         }
-        return (T) fn.apply(value);
+        return (T) fn.apply(value); // 应用转换
     }
 
     /**

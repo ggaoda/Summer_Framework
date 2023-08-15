@@ -2,6 +2,9 @@ package com.gaoda.context;
 
 import java.util.List;
 
+/**
+ * 给用户使用的ApplicationContext接口：
+ */
 public interface ApplicationContext extends AutoCloseable {
 
     /**

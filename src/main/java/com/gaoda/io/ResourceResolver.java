@@ -42,7 +42,8 @@ public class ResourceResolver {
     /**
      * scan()方法传入了一个映射函数，我们传入Resource到Class Name的映射，就可以扫描出Class Name
      * 这样，ResourceResolver只负责扫描并列出所有文件，由客户端决定是找出.class文件，还是找出.properties文件
-     * @param mapper
+     *
+     * @param mapper 扫描文件的映射关系
      * @return
      * @param <R>
      */
@@ -141,7 +142,7 @@ public class ResourceResolver {
                 res = new Resource("file:" + path, name);
             }
             logger.atDebug().log("found resource: {}", res);
-            R r = mapper.apply(res);
+            R r = mapper.apply(res); // 正确映射
             if (r != null) {
                 collector.add(r); // add扫描到的文件
             }

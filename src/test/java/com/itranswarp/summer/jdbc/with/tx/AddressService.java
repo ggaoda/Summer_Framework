@@ -20,7 +20,7 @@ public class AddressService {
 
     public void addAddress(Address... addresses) {
         for (Address address : addresses) {
-            // check if userId is exist:
+            // check if userId is exists:
             userService.getUser(address.userId);
             jdbcTemplate.update(JdbcTestBase.INSERT_ADDRESS, address.userId, address.address, address.zip);
         }
