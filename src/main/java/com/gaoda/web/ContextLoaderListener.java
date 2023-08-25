@@ -20,6 +20,9 @@ public class ContextLoaderListener implements ServletContextListener {
         logger.info("init {}.", getClass().getName());
         // 先获取ServletContext引用
         var servletContext = sce.getServletContext();
+        // forget
+        WebMvcConfiguration.setServletContext(servletContext);
+
         var propertyResolver = WebUtils.createPropertyResolver();
         String encoding = propertyResolver.getProperty("${summer.web.character-encoding:UTF-8}");
         servletContext.setRequestCharacterEncoding(encoding);
@@ -27,6 +30,10 @@ public class ContextLoaderListener implements ServletContextListener {
         // 创建IoC容器:
         // 通过getInitParameter("configuration")拿到完整类名，就可以顺利创建IoC容器了
         var applicationContext = createApplicationContext(servletContext.getInitParameter("configuration"), propertyResolver);
+
+        // register filters:
+        WebUtils.registerFilters(servletContext);
+
         // register DispatcherServlet:
         WebUtils.registerDispatcherServlet(servletContext, propertyResolver);
 
