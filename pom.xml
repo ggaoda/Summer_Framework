@@ -122,10 +122,30 @@
 
 
 
+        <!-- https://mvnrepository.com/artifact/org.apache.tomcat.embed/tomcat-embed-core -->
+        <dependency>
+            <groupId>org.apache.tomcat.embed</groupId>
+            <artifactId>tomcat-embed-core</artifactId>
+            <version>10.1.11</version>
+        </dependency>
+
+
+        <!-- https://mvnrepository.com/artifact/org.apache.tomcat.embed/tomcat-embed-jasper -->
+        <dependency>
+            <groupId>org.apache.tomcat.embed</groupId>
+            <artifactId>tomcat-embed-jasper</artifactId>
+            <version>10.1.11</version>
+        </dependency>
+
+
+
+
     </dependencies>
 
 
+
     <build>
+        <finalName>${project.name}</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -136,6 +156,25 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-war-plugin</artifactId>
                 <version>3.3.2</version>
+                <configuration>
+                    <!-- 复制classes到war包根目录 -->
+                    <webResources>
+                        <resource>
+                            <directory>${project.build.directory}/classes</directory>
+                        </resource>
+                    </webResources>
+                    <archiveClasses>true</archiveClasses>
+                    <archive>
+                        <manifest>
+                            <!-- 添加Class-Path -->
+                            <addClasspath>true</addClasspath>
+                            <!-- Classpath前缀 -->
+                            <classpathPrefix>tmp-webapp/WEB-INF/lib/</classpathPrefix>
+                            <!-- main启动类 -->
+                            <mainClass>com.gaoda.hello.Main</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
             </plugin>
         </plugins>
     </build>
